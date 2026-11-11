@@ -1,0 +1,16 @@
+{
+  "campaign": "ЦифроHelp",
+  "topic": "Фото и видео без потерь",
+  "platform": "instagram",
+  "account": "cifrovoi_poryadok",
+  "cardCount": 10,
+  "format": "JPEG",
+  "dimensions": "1080x1350",
+  "status": "awaiting_visual_review",
+  "schedule": null,
+  "merges": [
+    "3+4: choose backup place + verify access",
+    "5+6: wait for transfer + open copies"
+  ],
+  "source": "12 cards in original package"
+}
