@@ -1,0 +1,16 @@
+{
+  "campaign": "ЦифроHelp",
+  "topic": "Память почти заполнена?",
+  "platform": "instagram",
+  "account": "cifrovoi_poryadok",
+  "cardCount": 10,
+  "format": "JPEG",
+  "dimensions": "1080x1350",
+  "schedule": {
+    "at": "2026-11-12T16:00:00+03:00",
+    "timezone": "Europe/Moscow",
+    "metricoolId": 424408800,
+    "statusAtCreation": "PENDING"
+  },
+  "sourceVersion": "12 cards stored in sibling folder; 10-card version merges storage/category and downloads/video"
+}
