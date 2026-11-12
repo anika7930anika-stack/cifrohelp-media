@@ -1,0 +1,53 @@
+name: Build Windows RAM Instagram carousel (Nov 27)
+on:
+  push:
+    paths:
+      - 'scripts/build_windows_ram_2026_11_27.py'
+      - '.github/workflows/build-windows-ram-2026-11-27.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render-and-store:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout media repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Prepare Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Pillow
+        run: python -m pip install pillow
+      - name: Generate individual JPG images
+        run: python scripts/build_windows_ram_2026_11_27.py
+      - name: Verify exactly ten 1080 by 1350 JPEG files
+        shell: bash
+        run: |
+          python - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          p=Path('instagram/2026-11-27_windows_ram_10_cards')
+          files=sorted(p.glob('*.jpg'))
+          assert len(files)==10, f'expected 10, got {len(files)}'
+          for f in files:
+              with Image.open(f) as im:
+                  im.verify()
+              with Image.open(f) as im:
+                  assert im.size==(1080,1350) and im.format=='JPEG', f
+          print('Verified 10 individual Instagram JPG cards')
+          PY
+      - name: Save carousel media to GitHub
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add instagram/2026-11-27_windows_ram_10_cards/*.jpg
+          if ! git diff --cached --quiet; then
+            git commit -m "Add 10 Windows RAM images for November 27 carousel"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
