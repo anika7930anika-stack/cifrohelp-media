@@ -1,0 +1,61 @@
+name: Archive scheduled carousel media
+on:
+  push:
+    paths:
+      - 'instagram/**/sources.txt'
+      - '.github/workflows/archive-scheduled-carousels.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Archive missing carousel images
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r source; do
+            dir="$(dirname "$source")"
+            [ -f "$source" ] || continue
+            count="$(find "$dir" -maxdepth 1 -type f \( -iname '*.jpg' -o -iname '*.jpeg' \) | wc -l)"
+            if [ "$count" -eq 10 ]; then
+              echo "Already archived: $dir"
+              continue
+            fi
+            if [ "$count" -gt 0 ]; then
+              echo "Partial image set present, refusing to overwrite: $dir" >&2
+              exit 1
+            fi
+            n=0
+            while IFS= read -r url || [ -n "$url" ]; do
+              [ -z "$url" ] && continue
+              n=$((n+1))
+              if [ "$n" -gt 10 ]; then
+                echo "More than 10 URLs in $source" >&2
+                exit 1
+              fi
+              dest="$(printf '%s/%02d_carousel.jpg' "$dir" "$n")"
+              curl --fail --location --retry 3 --max-time 90 --silent --show-error "$url" -o "$dest"
+              [ "$(stat -c%s "$dest")" -gt 10000 ]
+              [ "$(file --mime-type --brief "$dest")" = "image/jpeg" ]
+            done < "$source"
+            if [ "$n" -ne 10 ]; then
+              echo "Expected 10 images, found $n in $source" >&2
+              exit 1
+            fi
+          done < <(find instagram -name sources.txt -type f | sort)
+      - name: Commit downloaded image files
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add instagram
+          if ! git diff --cached --quiet; then
+            git commit -m "Archive approved scheduled carousel images"
+            git push
+          fi
