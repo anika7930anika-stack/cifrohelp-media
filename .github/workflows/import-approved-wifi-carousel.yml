@@ -1,0 +1,44 @@
+name: Import approved Wi-Fi carousel images
+on:
+  push:
+    paths:
+      - 'instagram/2026-11-18_android_wifi_10_cards/sources.txt'
+      - '.github/workflows/import-approved-wifi-carousel.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Download and validate all ten approved images
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR="instagram/2026-11-18_android_wifi_10_cards"
+          COUNT=0
+          while IFS= read -r URL || [ -n "$URL" ]; do
+            [ -z "$URL" ] && continue
+            COUNT=$((COUNT + 1))
+            TARGET=$(printf "%s/%02d_cifrohelp_wifi.jpg" "$DIR" "$COUNT")
+            curl --fail --location --retry 3 --max-time 90 --silent --show-error "$URL" -o "$TARGET"
+            test $(stat -c%s "$TARGET") -gt 10000
+            test "$(file --mime-type --brief "$TARGET")" = "image/jpeg"
+          done < "$DIR/sources.txt"
+          test "$COUNT" -eq 10
+      - name: Commit approved carousel images
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add instagram/2026-11-18_android_wifi_10_cards/*.jpg
+          if ! git diff --cached --quiet; then
+            git commit -m "Store approved 10-card Wi-Fi carousel for November 18"
+            git push
+          fi
