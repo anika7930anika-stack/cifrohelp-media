@@ -1,0 +1,63 @@
+name: Archive approved Disk C carousel from Metricool (Nov 28)
+on:
+  push:
+    paths:
+      - 'instagram/2026-11-28_windows_disk_c_10_cards/sources-approved.txt'
+      - '.github/workflows/archive-approved-disk-c-2026-11-28.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  archive-approved:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Pillow
+        run: python -m pip install pillow
+      - name: Fetch all ten approved images and replace old cards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          from io import BytesIO
+          from urllib.request import Request, urlopen
+          d = Path('instagram/2026-11-28_windows_disk_c_10_cards')
+          urls = [u.strip() for u in (d/'sources-approved.txt').read_text().splitlines() if u.strip()]
+          assert len(urls) == 10, f'Expected 10 approved images, got {len(urls)}'
+          for i, url in enumerate(urls, 1):
+              assert url.startswith('https://static.metricool.com/'), url
+              req = Request(url, headers={'User-Agent':'Mozilla/5.0'})
+              with urlopen(req, timeout=90) as resp:
+                  data = resp.read()
+              im = Image.open(BytesIO(data))
+              im.load()
+              assert im.width >= 1000 and im.height >= 1250, f'Unexpected image size: {im.size}'
+              im = im.convert('RGB').resize((1080, 1350), Image.Resampling.LANCZOS)
+              dest = d / f'{i:02d}_carousel.jpg'
+              im.save(dest, format='JPEG', quality=93, subsampling=0, optimize=True)
+              with Image.open(dest) as check:
+                  assert check.format == 'JPEG' and check.size == (1080, 1350)
+              print('Approved card', i, 'saved:', dest)
+          print('Validated exactly 10 approved cards')
+          PY
+      - name: Commit approved images to GitHub
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add instagram/2026-11-28_windows_disk_c_10_cards/*.jpg
+          if ! git diff --cached --quiet; then
+            git commit -m "Replace Nov 28 Disk C carousel with 10 approved jellyfish images"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
